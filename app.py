@@ -6,11 +6,65 @@ from flask_cors import CORS
 import json
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
+from requests import get
+from requests.exceptions import RequestException
+from contextlib import closing
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
 
+def is_good_response(resp):
+    """
+    Returns True if the response seems to be HTML, False otherwise.
+    """
+    content_type = resp.headers['Content-Type'].lower()
+    return (resp.status_code == 200 
+            and content_type is not None 
+            and content_type.find('html') > -1)
+
+
+def log_error(e):
+    """
+    It is always a good idea to log errors. 
+    This function just prints them, but you can
+    make it do anything.
+    """
+    print(e)
+
+def simple_get(url):
+    """
+    Attempts to get the content at `url` by making an HTTP GET request.
+    If the content-type of response is some kind of HTML/XML, return the
+    text content, otherwise return None.
+    """
+    try:
+        with closing(get(url, stream=True)) as resp:
+            if is_good_response(resp):
+                return resp.content
+            else:
+                return None
+
+    except RequestException as e:
+        log_error('Error during requests to {0} : {1}'.format(url, str(e)))
+        return None
+
+def fetch_jobs():
+    url = "https://www.indeed.com/cmp/Boston-Meditech-Group/jobs"
+    #url = "https://www.indeed.com/cmp/Asea/jobs"
+    response = simple_get(url)
+    jobs = []
+    if response is not None:
+        html = BeautifulSoup(response, 'html.parser')
+        for li in html.select('.cmp-job-entry'):
+            h3 = li.select('h3 a')[0].get_text()
+            link = "https://indeed.com" + li.select('a')[0].get('href')
+            loc = li.select('.cmp-note')[0].get_text()
+            des = li.select('.cmp-job-snippet')[0].get_text()
+            job = {'title': h3, 'link': link, 'location': loc, 'description': des}
+            jobs.append(job)
+    return jobs
 
 users = [
     {"name": "Sam",
@@ -25,13 +79,11 @@ users = [
 ]
 
 class User(Resource):
-    def get(self, name):
-        for user in users:
-            if(name == user["name"]):
-                return user, 200
-        return "User not found", 404
+    def get(self):
+        jobs = fetch_jobs()
+        return jobs, 404
 
-    def post(self, name):
+    def post(self):
         d = json.loads(request.data)
         name= d['name']
         email= d['email']
@@ -45,7 +97,6 @@ class User(Resource):
             sent_from = gmail_user
             to = ['samtang1430@gmail.com']
             subject = 'OMG Super Important Message'
-            body = 'Hey, what\'s up?\n\n- You'
             msg = MIMEMultipart()
             msg['From'] = sent_from
             msg['To'] = ", ".join(to)
@@ -67,33 +118,10 @@ class User(Resource):
 
 
 
-    def put(self, name):
-        parser = reqparse.RequestParser()
-        parser.add_argument("age")
-        parser.add_argument("occupation")
-        args = parser.parse_args()
-
-        for user in users:
-            if(name == user["name"]):
-                user["age"] = args["age"]
-                user["occupation"] = args["occupation"]
-                return user, 200
-        user = {
-            "name": name,
-            "age": args["age"],
-            "occupation": args["occupation"]
-        }
-        users.append(user)
-        return user, 201
-
-    def delete(self, name):
-        global users
-        users = [user for user in users if user["name"] != name]
-        return "{} is deleted.".format(name), 200
 
 
+api.add_resource(User, "/api")
 
-api.add_resource(User, "/user/<string:name>")
+app.run(debug=True)
 
-if __name__ == "__main__":
-	app.run()
+
