@@ -4,8 +4,6 @@ import requests
 from flask_restful import Api, Resource, reqparse
 from flask_cors import CORS
 import json
-from email.MIMEMultipart import MIMEMultipart
-from email.MIMEText import MIMEText
 from requests import get
 from requests.exceptions import RequestException
 from contextlib import closing
@@ -96,22 +94,19 @@ class User(Resource):
             gmail_password = 'J3e8e7z2'
             sent_from = gmail_user
             to = ['samtang1430@gmail.com']
-            subject = 'OMG Super Important Message'
-            msg = MIMEMultipart()
-            msg['From'] = sent_from
-            msg['To'] = ", ".join(to)
-            msg['Subject'] = name + " just left feedback!"
+            subject = name + " just left feedback!"
             body = "He/she said: \n" + message + "\n\nHis/her email is: \n" + email
-            msg.attach(MIMEText(body, 'plain'))
+            text = "From: " + sent_from + "\nTo: " + ', '.join(to)+'\nSubject: ' + subject + '\n' + body
             try:
                 server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
                 server.ehlo()
                 server.login(gmail_user, gmail_password)
-                server.sendmail(sent_from, to, msg.as_string())
+                server.sendmail(sent_from, to, text)
                 server.close()
                 print ('Email sent!')
             except:
                 print ('Something went wrong...')
+                return 400
             return 201
         else:
             return 400
@@ -121,7 +116,6 @@ class User(Resource):
 
 
 api.add_resource(User, "/api")
-
 app.run(debug=True)
 
 
