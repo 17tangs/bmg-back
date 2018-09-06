@@ -58,9 +58,9 @@ class User(Resource):
                 server.login(gmail_user, gmail_password)
                 server.sendmail(sent_from, to, msg.as_string())
                 server.close()
-                print 'Email sent!'
+                print ('Email sent!')
             except:
-                print 'Something went wrong...'
+                print ('Something went wrong...')
             return 201
         else:
             return 400
