@@ -116,6 +116,7 @@ class User(Resource):
 
 
 api.add_resource(User, "/api")
-app.run(debug=True)
+if __name__ == '__main__':
+    app.run(debug=True)
 
 
