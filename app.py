@@ -2,6 +2,7 @@ import smtplib
 from flask import Flask, request
 import requests
 from flask_restful import Api, Resource, reqparse
+from flask_mail import Message
 from flask_cors import CORS
 import json
 from requests import get
@@ -106,7 +107,7 @@ class User(Resource):
                 print ('Email sent!')
             except:
                 print ('Something went wrong...')
-                return 400
+                return 402
             return 201
         else:
             return 400
